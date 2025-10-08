@@ -420,7 +420,7 @@ elif app_mode == "Disease Recognition":
     st.subheader("🔐 Developer Access Only")
     dev_key = st.text_input("Enter Developer Key to Access Retraining:", type="password")
 
-    if dev_key == "admin123":  # change this to your private password
+    if dev_key == "TEAMsatish@2025":  # change this to your private password
         st.success("✅ Developer access granted.")
         st.subheader("🔁 Retrain Model with Feedback Data")
         st.write("Fine-tune the model using newly corrected samples and visualize training progress.")
