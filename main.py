@@ -340,7 +340,7 @@ elif app_mode == "Disease Recognition":
 
 
 # ----------------------------- ADDED FEATURES -----------------------------
-"""import os
+import os
 from datetime import datetime
 from PIL import Image
 import pandas as pd
@@ -374,13 +374,13 @@ if app_mode == "Disease Recognition":
                 'Tomato___healthy'
             ]
             predicted_cap = class_name[result_index_cap]
-            st.success(f"🌾 Model Prediction (Captured): **{predicted_cap}**")"""
+            st.success(f"🌾 Model Prediction (Captured): **{predicted_cap}**")
 
     # -----------------------------
     # 🧠 Feedback System + CSV Logging
     # -----------------------------
-       st.markdown("---")
-       st.subheader("🧠 Feedback — Help Improve Model")
+    st.markdown("---")
+    st.subheader("🧠 Feedback — Help Improve Model")
     feedback_label = st.text_input("Enter Correct Disease Name (e.g., Tomato___Late_blight)")
 
     if st.button("Submit Feedback"):
@@ -415,7 +415,7 @@ if app_mode == "Disease Recognition":
 
             st.success(f"✅ Feedback saved and logged: {filename}")
 
-    """# -----------------------------
+    # -----------------------------
     # 🔁 Retrain Model on Feedback Data (with charts)
     # -----------------------------
     st.markdown("---")
@@ -448,7 +448,7 @@ if app_mode == "Disease Recognition":
             )
 
             model.compile(optimizer=Adam(learning_rate=1e-4), loss="categorical_crossentropy", metrics=["accuracy"])
-            history = model.fit(train_data, validation_data=val_data, epochs=3)
+            history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
 
             model.save("trained_model_updated.keras")
             st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`!")
@@ -473,4 +473,4 @@ if app_mode == "Disease Recognition":
 
             st.pyplot(fig)
         else:
-            st.warning("⚠️ No feedback images found. Please add corrections before retraining.")"""
+            st.warning("⚠️ No feedback images found. Please add corrections before retraining.")
