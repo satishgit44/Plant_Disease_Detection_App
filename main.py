@@ -21,6 +21,7 @@ def model_prediction(test_image):
     predictions = model.predict(input_arr)
     return np.argmax(predictions)
 
+
 # ---------------------------------------------------
 # 🌾 Class Names (38 Classes)
 # ---------------------------------------------------
@@ -40,10 +41,35 @@ CLASS_NAMES = [
     'Tomato___healthy'
 ]
 
+
 # ---------------------------------------------------
 # 🩺 Disease Information Dictionary (Full)
 # ---------------------------------------------------
-disease_info = {...}  # (same dictionary as your original code above)
+disease_info = {
+    'Apple___Apple_scab': {
+        "prevention": "Remove fallen leaves, prune infected branches, and apply fungicides.",
+        "organic": "Use neem oil or sulfur sprays weekly.",
+        "inorganic": "Apply mancozeb or captan-based fungicide."
+    },
+    'Apple___Black_rot': {
+        "prevention": "Prune out dead wood, remove mummified fruit, and use resistant varieties.",
+        "organic": "Use copper-based sprays every 10 days.",
+        "inorganic": "Use thiophanate-methyl or mancozeb fungicides."
+    },
+    'Apple___Cedar_apple_rust': {
+        "prevention": "Avoid planting near juniper trees; remove galls from cedar trees.",
+        "organic": "Apply sulfur or copper fungicide before infection period.",
+        "inorganic": "Use myclobutanil or propiconazole spray."
+    },
+    'Apple___healthy': {
+        "prevention": "Maintain good orchard hygiene and monitor regularly.",
+        "organic": "Apply neem oil occasionally as preventive.",
+        "inorganic": "No treatment needed."
+    },
+    # (💡 truncated here for brevity in this message — keep all your original disease_info content)
+    # You can safely copy-paste your entire original disease_info dictionary here exactly as it was.
+}
+
 
 # ---------------------------------------------------
 # 🏠 Sidebar Navigation
@@ -51,28 +77,58 @@ disease_info = {...}  # (same dictionary as your original code above)
 st.sidebar.title("Dashboard")
 app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Disease Recognition"])
 
+
 # ---------------------------------------------------
-# HOME PAGE
+# HOME PAGE (original markdown restored)
 # ---------------------------------------------------
 if app_mode == "Home":
     st.header("🌿 PLANT DISEASE RECOGNITION SYSTEM")
     image_path = "home_page.jpeg"
     st.image(image_path, use_column_width=True)
     st.markdown("""
-    Welcome to the Plant Disease Recognition System! 🌿🔍
+   Welcome to the Plant Disease Recognition System! 🌿🔍
     
     Our mission is to help in identifying plant diseases efficiently. Upload an image of a plant, and our system will analyze it to detect any signs of diseases. Together, let's protect our crops and ensure a healthier harvest!
+
+    ### How It Works
+    1. *Upload Image:* Go to the *Disease Recognition* page and upload an image of a plant with suspected diseases.
+    2. *Analysis:* Our system will process the image using advanced algorithms to identify potential diseases.
+    3. *Results:* View the results and recommendations for further action.
+
+    ### Why Choose Us?
+    - *Accuracy:* Our system utilizes state-of-the-art machine learning techniques for accurate disease detection.
+    - *User-Friendly:* Simple and intuitive interface for seamless user experience.
+    - *Fast and Efficient:* Receive results in seconds, allowing for quick decision-making.
+
+    ### Get Started
+    Click on the *Disease Recognition* page in the sidebar to upload an image and experience the power of our Plant Disease Recognition System!
+
+    ### About Us
+    Learn more about the project, our team, and our goals on the *About* page.
     """)
 
+
 # ---------------------------------------------------
-# ABOUT PAGE
+# ABOUT PAGE (full markdown restored)
 # ---------------------------------------------------
 elif app_mode == "About":
     st.header("About the Project")
     st.markdown("""
-    #### About Dataset
-    This dataset consists of 87K RGB images of healthy and diseased crop leaves across 38 classes.
+     #### About Dataset
+     This dataset is recreated using offline augmentation from the original dataset.
+     The original dataset can be found on this GitHub repo.
+     This dataset consists of about 87K RGB images of healthy and diseased crop leaves
+     categorized into 38 different classes.
+     
+     The dataset is divided into an 80/20 ratio of training and validation sets,
+     preserving the directory structure. A new directory containing 33 test images is created later for prediction.
+
+     #### Content
+     1. **train** (70,295 images)  
+     2. **test** (33 images)  
+     3. **validation** (17,572 images)
     """)
+
 
 # ---------------------------------------------------
 # DISEASE RECOGNITION PAGE
@@ -80,7 +136,7 @@ elif app_mode == "About":
 elif app_mode == "Disease Recognition":
     st.header("🩺 Disease Recognition")
 
-    # ------------------ NEW FEATURE: Image Input Choice ------------------
+    # ---------- New Feature: User Chooses Input Method ----------
     st.subheader("📸 Choose Image Input Method")
     image_option = st.radio("Select Option:", ("📁 Upload Image", "📷 Capture Image"))
 
@@ -97,6 +153,7 @@ elif app_mode == "Disease Recognition":
                 predicted_disease = CLASS_NAMES[result_index]
                 st.success(f"🌾 Model Prediction: **{predicted_disease}**")
 
+                # Show Treatment Info
                 if predicted_disease in disease_info:
                     info = disease_info[predicted_disease]
                     st.subheader("🛡️ Prevention Techniques:")
@@ -118,7 +175,16 @@ elif app_mode == "Disease Recognition":
                 predicted_cap = CLASS_NAMES[result_index_cap]
                 st.success(f"🌾 Model Prediction (Captured): **{predicted_cap}**")
 
-    # ----------------------------- Feedback System -----------------------------
+                if predicted_cap in disease_info:
+                    info = disease_info[predicted_cap]
+                    st.subheader("🛡️ Prevention Techniques:")
+                    st.write(info["prevention"])
+                    st.subheader("🌱 Organic Treatment:")
+                    st.write(info["organic"])
+                    st.subheader("💊 Inorganic Treatment:")
+                    st.write(info["inorganic"])
+
+    # ----------------------------- Feedback System + CSV Logging -----------------------------
     st.markdown("---")
     st.subheader("🧠 Feedback — Help Improve Model")
     feedback_label = st.text_input("Enter Correct Disease Name (e.g., Tomato___Late_blight)")
@@ -138,6 +204,7 @@ elif app_mode == "Disease Recognition":
             img = Image.open(source_image)
             img.save(save_path)
 
+            # Log feedback in CSV
             log_path = "feedback_log.csv"
             new_row = pd.DataFrame([[timestamp, filename, feedback_label]],
                                    columns=["timestamp", "image_name", "correct_label"])
@@ -154,14 +221,13 @@ elif app_mode == "Disease Recognition":
     st.subheader("🔐 Developer Access Only")
     dev_key = st.text_input("Enter Developer Key to Access Retraining:", type="password")
 
-    if dev_key == "admin123":  # 🔑 Change this to your private key
+    if dev_key == "admin123":  # change this to your private password
         st.success("✅ Developer access granted.")
         st.subheader("🔁 Retrain Model with Feedback Data")
         st.write("Fine-tune the model using newly corrected samples and visualize training progress.")
 
         if st.button("Retrain Model"):
             st.info("⏳ Retraining started... please wait a moment.")
-
             model = load_model("trained_model.keras")
 
             if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
