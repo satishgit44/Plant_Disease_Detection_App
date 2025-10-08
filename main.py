@@ -379,8 +379,8 @@ if app_mode == "Disease Recognition":
     # -----------------------------
     # 🧠 Feedback System + CSV Logging
     # -----------------------------
-    st.markdown("---")
-    st.subheader("🧠 Feedback — Help Improve Model")
+       st.markdown("---")
+       st.subheader("🧠 Feedback — Help Improve Model")
     feedback_label = st.text_input("Enter Correct Disease Name (e.g., Tomato___Late_blight)")
 
     if st.button("Submit Feedback"):
