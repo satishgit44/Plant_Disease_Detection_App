@@ -337,15 +337,3 @@ elif app_mode == "Disease Recognition":
                 st.write(info["inorganic"])
             else:
                 st.info("No detailed prevention/treatment information available for this plant.")
-
-source_option = st.radio("Select input method:", ["📁 Upload from Device", "📸 Capture from Camera"])
-if source_option == "📁 Upload from Device":
-    test_image = st.file_uploader(...)
-elif source_option == "📸 Capture from Camera":
-    test_image = st.camera_input("Capture Image")
-    
-if st.button("✅ Submit Feedback"):
-    feedback_dir = "feedback_data"
-    os.makedirs(feedback_dir, exist_ok=True)
-    with open(feedback_file, "a") as f:
-        f.write(f"{datetime.now()},{predicted_disease},{correct_label}\n")
