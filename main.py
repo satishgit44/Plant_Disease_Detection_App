@@ -1,51 +1,113 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
+import os
+from tensorflow.keras.preprocessing.image import load_img, img_to_array, ImageDataGenerator
+from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras.utils import to_categorical
+from sklearn.model_selection import train_test_split
+from datetime import datetime
 
+# -----------------------------
 # Tensorflow Model Prediction
+# -----------------------------
 def model_prediction(test_image):
     model = tf.keras.models.load_model("trained_model.keras")
-    image = tf.keras.preprocessing.image.load_img(test_image, target_size=(128, 128))
-    input_arr = tf.keras.preprocessing.image.img_to_array(image)
-    input_arr = np.array([input_arr])  # convert single image to batch
+    image = load_img(test_image, target_size=(128, 128))
+    input_arr = img_to_array(image)
+    input_arr = np.array([input_arr])
     predictions = model.predict(input_arr)
     return np.argmax(predictions)
 
+# -----------------------------
+# Retrain Model Function
+# -----------------------------
+def retrain_model(feedback_dir="feedback_data"):
+    MODEL_PATH = "trained_model.keras"
+    UPDATED_MODEL_PATH = "trained_model_updated.keras"
+
+    if not os.path.exists(feedback_dir):
+        st.warning("⚠️ No feedback data found!")
+        return
+
+    images, labels = [], []
+    for file in os.listdir(feedback_dir):
+        if file.lower().endswith((".jpg", ".jpeg", ".png")):
+            label = file.split("_")[0]
+            img_path = os.path.join(feedback_dir, file)
+            img = load_img(img_path, target_size=(128, 128))
+            img_array = img_to_array(img)
+            images.append(img_array)
+            labels.append(label)
+
+    if len(images) == 0:
+        st.warning("⚠️ No feedback images found for retraining.")
+        return
+
+    st.info(f"🧠 Loaded {len(images)} feedback images for retraining...")
+
+    X = np.array(images)
+    y_labels = np.array(labels)
+
+    encoder = LabelEncoder()
+    y_encoded = encoder.fit_transform(y_labels)
+    y_categorical = to_categorical(y_encoded)
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y_categorical, test_size=0.2, random_state=42)
+
+    datagen = ImageDataGenerator(
+        rotation_range=30,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        shear_range=0.1,
+        zoom_range=0.2,
+        horizontal_flip=True,
+        fill_mode='nearest'
+    )
+
+    model = tf.keras.models.load_model(MODEL_PATH)
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+    st.info("🚀 Retraining model with new feedback data... This may take a few minutes ⏳")
+    history = model.fit(
+        datagen.flow(X_train, y_train, batch_size=8),
+        validation_data=(X_val, y_val),
+        epochs=5,
+        verbose=1
+    )
+
+    model.save(UPDATED_MODEL_PATH)
+
+    log_file = os.path.join(feedback_dir, "retrain_log.txt")
+    with open(log_file, "a") as log:
+        log.write(f"Retrained on {len(images)} samples | {datetime.now()}\n")
+
+    st.success("✅ Model retrained successfully and saved as 'trained_model_updated.keras'")
+    st.write("📊 Training Accuracy:", round(history.history['accuracy'][-1] * 100, 2), "%")
+    st.write("📉 Validation Accuracy:", round(history.history['val_accuracy'][-1] * 100, 2), "%")
 
 # -----------------------------
-# Sidebar
+# Sidebar Navigation
 # -----------------------------
-st.sidebar.title("Dashboard")
-app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Disease Recognition"])
+st.sidebar.title("🌿 Dashboard")
+app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Disease Recognition", "Feedback History", "Model Retraining"])
 
 # -----------------------------
 # Home Page
 # -----------------------------
 if app_mode == "Home":
-    st.header("🌿 PLANT DISEASE RECOGNITION SYSTEM")
-    image_path = "home_page.jpeg"
-    st.image(image_path, use_column_width=True)
+    st.header("🌾 PLANT DISEASE RECOGNITION SYSTEM")
+    st.image("home_page.jpeg", use_column_width=True)
     st.markdown("""
-   Welcome to the Plant Disease Recognition System! 🌿🔍
-    
-    Our mission is to help in identifying plant diseases efficiently. Upload an image of a plant, and our system will analyze it to detect any signs of diseases. Together, let's protect our crops and ensure a healthier harvest!
+    Welcome to the **Plant Disease Recognition System** 🌱
 
-    ### How It Works
-    1. *Upload Image:* Go to the *Disease Recognition* page and upload an image of a plant with suspected diseases.
-    2. *Analysis:* Our system will process the image using advanced algorithms to identify potential diseases.
-    3. *Results:* View the results and recommendations for further action.
+    ### ✨ Features
+    - 📸 Capture crop image directly using camera
+    - 🧠 AI-powered disease detection
+    - 💬 Feedback system that helps model improve
+    - 🔄 Retrain model with your feedback data
 
-    ### Why Choose Us?
-    - *Accuracy:* Our system utilizes state-of-the-art machine learning techniques for accurate disease detection.
-    - *User-Friendly:* Simple and intuitive interface for seamless user experience.
-    - *Fast and Efficient:* Receive results in seconds, allowing for quick decision-making.
-
-    ### Get Started
-    Click on the *Disease Recognition* page in the sidebar to upload an image and experience the power of our Plant Disease Recognition System!
-
-    ### About Us
-    Learn more about the project, our team, and our goals on the *About* page.
-
+    Go to the **Disease Recognition** page to get started!
     """)
 
 # -----------------------------
@@ -54,286 +116,110 @@ if app_mode == "Home":
 elif app_mode == "About":
     st.header("About the Project")
     st.markdown("""
-     #### About Dataset
-                This dataset is recreated using offline augmentation from the original dataset.The original dataset can be found on this github repo.
-                This dataset consists of about 87K rgb images of healthy and diseased crop leaves which is categorized into 38 different classes.The total dataset is divided into 80/20 ratio of training and validation set preserving the directory structure.
-                A new directory containing 33 test images is created later for prediction purpose.
-    #### Content
-                1. train (70295 images)
-                2. test (33 images)
-                3. validation (17572 images)
+    #### 📚 Dataset Overview
+    - 87,000+ RGB images of healthy and diseased leaves  
+    - 38 crop classes  
+    - Train/Validation split: 80/20  
+    - Based on the **PlantVillage Dataset**
 
+    #### 👨‍💻 Team Goals
+    - Develop an intelligent, scalable disease detection tool  
+    - Help farmers detect crop diseases early  
+    - Continuously improve model accuracy through user feedback  
     """)
 
 # -----------------------------
 # Disease Recognition Page
 # -----------------------------
 elif app_mode == "Disease Recognition":
-    st.header("🩺 Disease Recognition")
-    test_image = st.file_uploader("Upload a leaf image:", type=["jpg", "jpeg", "png"])
+    st.header("🩺 Plant Disease Detection")
+
+    st.markdown("### Choose Input Source:")
+    source = st.radio("Select input method:", ["📁 Upload Image", "📸 Capture from Camera"])
+
+    test_image = None
+    if source == "📁 Upload Image":
+        test_image = st.file_uploader("Upload a leaf image:", type=["jpg", "jpeg", "png"])
+    elif source == "📸 Capture from Camera":
+        test_image = st.camera_input("Take a picture of your crop leaf:")
 
     if test_image is not None:
-        if st.button("Show Image"):
-            st.image(test_image, use_column_width=True)
+        st.image(test_image, use_column_width=True, caption="Selected Image")
 
-        if st.button("Predict"):
-            st.write("🔍 **Analyzing...**")
+        if st.button("🔍 Predict Disease"):
+            st.write("Analyzing image... please wait ⏳")
             result_index = model_prediction(test_image)
 
+            # All 38 Classes
             class_name = [
                 'Apple___Apple_scab', 'Apple___Black_rot', 'Apple___Cedar_apple_rust', 'Apple___healthy',
-                'Blueberry___healthy', 'Cherry_(including_sour)___Powdery_mildew', 
-                'Cherry_(including_sour)___healthy', 'Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot', 
-                'Corn_(maize)___Common_rust_', 'Corn_(maize)___Northern_Leaf_Blight', 'Corn_(maize)___healthy', 
-                'Grape___Black_rot', 'Grape___Esca_(Black_Measles)', 'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)', 
+                'Blueberry___healthy', 'Cherry_(including_sour)___Powdery_mildew',
+                'Cherry_(including_sour)___healthy', 'Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot',
+                'Corn_(maize)___Common_rust_', 'Corn_(maize)___Northern_Leaf_Blight', 'Corn_(maize)___healthy',
+                'Grape___Black_rot', 'Grape___Esca_(Black_Measles)', 'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)',
                 'Grape___healthy', 'Orange___Haunglongbing_(Citrus_greening)', 'Peach___Bacterial_spot',
-                'Peach___healthy', 'Pepper,_bell___Bacterial_spot', 'Pepper,_bell___healthy', 
-                'Potato___Early_blight', 'Potato___Late_blight', 'Potato___healthy', 
-                'Raspberry___healthy', 'Soybean___healthy', 'Squash___Powdery_mildew', 
-                'Strawberry___Leaf_scorch', 'Strawberry___healthy', 'Tomato___Bacterial_spot', 
-                'Tomato___Early_blight', 'Tomato___Late_blight', 'Tomato___Leaf_Mold', 
-                'Tomato___Septoria_leaf_spot', 'Tomato___Spider_mites Two-spotted_spider_mite', 
+                'Peach___healthy', 'Pepper,_bell___Bacterial_spot', 'Pepper,_bell___healthy',
+                'Potato___Early_blight', 'Potato___Late_blight', 'Potato___healthy',
+                'Raspberry___healthy', 'Soybean___healthy', 'Squash___Powdery_mildew',
+                'Strawberry___Leaf_scorch', 'Strawberry___healthy', 'Tomato___Bacterial_spot',
+                'Tomato___Early_blight', 'Tomato___Late_blight', 'Tomato___Leaf_Mold',
+                'Tomato___Septoria_leaf_spot', 'Tomato___Spider_mites Two-spotted_spider_mite',
                 'Tomato___Target_Spot', 'Tomato___Tomato_Yellow_Leaf_Curl_Virus', 'Tomato___Tomato_mosaic_virus',
                 'Tomato___healthy'
             ]
 
             predicted_disease = class_name[result_index]
-            st.success(f"🌾 Model Prediction: **{predicted_disease}**")
+            st.success(f"🌿 Model Prediction: **{predicted_disease}**")
 
-            # -----------------------------
-            # Disease Info Dictionary (All 38 Classes)
-            # -----------------------------
-            disease_info = {
+            # --------------- FEEDBACK SYSTEM ---------------
+            st.subheader("🧠 Model Feedback")
+            correct_label = st.selectbox("If prediction is wrong, select correct disease:", class_name)
+            if st.button("✅ Submit Feedback"):
+                feedback_dir = "feedback_data"
+                os.makedirs(feedback_dir, exist_ok=True)
+                feedback_file = os.path.join(feedback_dir, "feedback_log.csv")
 
-                # Apple
-                'Apple___Apple_scab': {
-                    "prevention": "Remove fallen leaves, prune infected branches, and apply fungicides.",
-                    "organic": "Use neem oil or sulfur sprays weekly.",
-                    "inorganic": "Apply mancozeb or captan-based fungicide."
-                },
-                'Apple___Black_rot': {
-                    "prevention": "Prune out dead wood, remove mummified fruit, and use resistant varieties.",
-                    "organic": "Use copper-based sprays every 10 days.",
-                    "inorganic": "Use thiophanate-methyl or mancozeb fungicides."
-                },
-                'Apple___Cedar_apple_rust': {
-                    "prevention": "Avoid planting near juniper trees; remove galls from cedar trees.",
-                    "organic": "Apply sulfur or copper fungicide before infection period.",
-                    "inorganic": "Use myclobutanil or propiconazole spray."
-                },
-                'Apple___healthy': {
-                    "prevention": "Maintain good orchard hygiene and monitor regularly.",
-                    "organic": "Apply neem oil occasionally as preventive.",
-                    "inorganic": "No treatment needed."
-                },
+                with open(feedback_file, "a") as f:
+                    f.write(f"{datetime.now()},{predicted_disease},{correct_label}\n")
 
-                # Blueberry
-                'Blueberry___healthy': {
-                    "prevention": "Maintain soil pH (4.5–5.5), prune regularly, and irrigate properly.",
-                    "organic": "Compost mulch and neem oil spray prevent fungal issues.",
-                    "inorganic": "No chemical treatment needed."
-                },
+                # Save image for retraining
+                image_save_path = os.path.join(feedback_dir, f"{correct_label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg")
+                with open(image_save_path, "wb") as img_file:
+                    img_file.write(test_image.getbuffer())
 
-                # Cherry
-                'Cherry_(including_sour)___Powdery_mildew': {
-                    "prevention": "Ensure airflow by pruning and avoid overhead watering.",
-                    "organic": "Use sulfur-based sprays or neem oil.",
-                    "inorganic": "Apply myclobutanil or trifloxystrobin fungicide."
-                },
-                'Cherry_(including_sour)___healthy': {
-                    "prevention": "Avoid excessive nitrogen and maintain air circulation.",
-                    "organic": "Periodic neem oil sprays.",
-                    "inorganic": "No treatment needed."
-                },
+                st.success("✅ Feedback saved successfully! Thank you for helping improve the model.")
 
-                # Corn
-                'Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot': {
-                    "prevention": "Rotate crops, use resistant varieties, and destroy infected residue.",
-                    "organic": "Compost teas or neem oil applications.",
-                    "inorganic": "Use azoxystrobin or pyraclostrobin fungicides."
-                },
-                'Corn_(maize)___Common_rust_': {
-                    "prevention": "Use rust-resistant hybrids and crop rotation.",
-                    "organic": "Neem oil spray every 7 days.",
-                    "inorganic": "Spray mancozeb or propiconazole fungicides."
-                },
-                'Corn_(maize)___Northern_Leaf_Blight': {
-                    "prevention": "Use resistant hybrids and ensure balanced fertilization.",
-                    "organic": "Garlic extract or neem oil foliar spray.",
-                    "inorganic": "Apply fungicides with azoxystrobin or mancozeb."
-                },
-                'Corn_(maize)___healthy': {
-                    "prevention": "Maintain spacing and nutrient management.",
-                    "organic": "Use compost tea as foliar feed.",
-                    "inorganic": "No chemical needed."
-                },
+# -----------------------------
+# Feedback History Page
+# -----------------------------
+elif app_mode == "Feedback History":
+    st.header("📋 Feedback History")
+    feedback_file = os.path.join("feedback_data", "feedback_log.csv")
+    if os.path.exists(feedback_file):
+        with open(feedback_file, "r") as f:
+            data = f.readlines()
+            st.write("### Recent Feedback Entries:")
+            for line in data[-20:]:
+                timestamp, predicted, correct = line.strip().split(",")
+                st.write(f"🕒 {timestamp} | ❌ Predicted: {predicted} | ✅ Correct: {correct}")
+    else:
+        st.info("No feedback submitted yet!")
 
-                # Grape
-                'Grape___Black_rot': {
-                    "prevention": "Remove infected leaves and prune vines.",
-                    "organic": "Sulfur dust or neem oil spray.",
-                    "inorganic": "Spray mancozeb or myclobutanil fungicide."
-                },
-                'Grape___Esca_(Black_Measles)': {
-                    "prevention": "Avoid wounds on vines and disinfect pruning tools.",
-                    "organic": "Use Trichoderma bio-control fungus.",
-                    "inorganic": "Apply systemic fungicide like tebuconazole."
-                },
-                'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)': {
-                    "prevention": "Remove infected leaves and maintain vineyard hygiene.",
-                    "organic": "Neem oil or baking soda spray.",
-                    "inorganic": "Use chlorothalonil fungicide."
-                },
-                'Grape___healthy': {
-                    "prevention": "Ensure good air flow and regular pruning.",
-                    "organic": "Periodic neem oil spray.",
-                    "inorganic": "No treatment needed."
-                },
+# -----------------------------
+# Model Retraining Page
+# -----------------------------
+elif app_mode == "Model Retraining":
+    st.header("🔄 Model Retraining Dashboard")
+    st.write("Use feedback data to improve model accuracy over time.")
 
-                # Orange
-                'Orange___Haunglongbing_(Citrus_greening)': {
-                    "prevention": "Control psyllid vector and remove infected trees.",
-                    "organic": "Neem oil for psyllid control.",
-                    "inorganic": "Imidacloprid spray to control psyllids."
-                },
+    feedback_dir = "feedback_data"
+    feedback_file = os.path.join(feedback_dir, "feedback_log.csv")
 
-                # Peach
-                'Peach___Bacterial_spot': {
-                    "prevention": "Use disease-free nursery plants and avoid overhead watering.",
-                    "organic": "Copper oxychloride spray weekly.",
-                    "inorganic": "Apply streptomycin-based bactericides."
-                },
-                'Peach___healthy': {
-                    "prevention": "Regular pruning and balanced fertilization.",
-                    "organic": "Neem oil preventive spray.",
-                    "inorganic": "No chemical needed."
-                },
+    if os.path.exists(feedback_file):
+        num_feedback = len([f for f in os.listdir(feedback_dir) if f.endswith((".jpg", ".jpeg", ".png"))])
+        st.write(f"🧾 Feedback Samples Available: **{num_feedback}**")
+    else:
+        st.info("No feedback available yet. Please collect data first.")
 
-                # Pepper
-                'Pepper,_bell___Bacterial_spot': {
-                    "prevention": "Use resistant seeds and copper sprays during wet periods.",
-                    "organic": "Copper-based fungicide every 10 days.",
-                    "inorganic": "Apply streptomycin spray."
-                },
-                'Pepper,_bell___healthy': {
-                    "prevention": "Avoid leaf wetness and remove debris.",
-                    "organic": "Neem oil or compost tea.",
-                    "inorganic": "No treatment needed."
-                },
-
-                # Potato
-                'Potato___Early_blight': {
-                    "prevention": "Avoid overhead watering, and rotate crops yearly.",
-                    "organic": "Neem oil or compost tea spray.",
-                    "inorganic": "Use chlorothalonil or mancozeb fungicide."
-                },
-                'Potato___Late_blight': {
-                    "prevention": "Avoid moisture and plant spacing.",
-                    "organic": "Use copper oxychloride spray.",
-                    "inorganic": "Metalaxyl or cymoxanil fungicides."
-                },
-                'Potato___healthy': {
-                    "prevention": "Healthy soil and crop rotation.",
-                    "organic": "Trichoderma-based soil application.",
-                    "inorganic": "No chemical required."
-                },
-
-                # Raspberry
-                'Raspberry___healthy': {
-                    "prevention": "Ensure airflow and remove old canes.",
-                    "organic": "Neem or sulfur spray occasionally.",
-                    "inorganic": "No treatment needed."
-                },
-
-                # Soybean
-                'Soybean___healthy': {
-                    "prevention": "Rotate crops and avoid excessive irrigation.",
-                    "organic": "Compost tea and neem-based tonic.",
-                    "inorganic": "No treatment needed."
-                },
-
-                # Squash
-                'Squash___Powdery_mildew': {
-                    "prevention": "Improve air flow and avoid dense planting.",
-                    "organic": "Spray milk solution (1:10) or sulfur dust.",
-                    "inorganic": "Use myclobutanil or trifloxystrobin fungicides."
-                },
-
-                # Strawberry
-                'Strawberry___Leaf_scorch': {
-                    "prevention": "Remove infected leaves and improve drainage.",
-                    "organic": "Neem oil spray weekly.",
-                    "inorganic": "Use captan-based fungicide."
-                },
-                'Strawberry___healthy': {
-                    "prevention": "Avoid excess moisture and mulch properly.",
-                    "organic": "Compost extract foliar spray.",
-                    "inorganic": "No treatment needed."
-                },
-
-                # Tomato
-                'Tomato___Bacterial_spot': {
-                    "prevention": "Use disease-free seeds and copper-based sprays.",
-                    "organic": "Neem or copper fungicide weekly.",
-                    "inorganic": "Use streptomycin or copper hydroxide."
-                },
-                'Tomato___Early_blight': {
-                    "prevention": "Remove infected leaves and avoid wetting foliage.",
-                    "organic": "Apply compost tea or copper fungicide.",
-                    "inorganic": "Use chlorothalonil or mancozeb-based fungicides."
-                },
-                'Tomato___Late_blight': {
-                    "prevention": "Avoid excess humidity and waterlogging.",
-                    "organic": "Use neem oil or copper spray.",
-                    "inorganic": "Apply metalaxyl or cymoxanil-based fungicide."
-                },
-                'Tomato___Leaf_Mold': {
-                    "prevention": "Improve air circulation and reduce humidity.",
-                    "organic": "Spray baking soda (1 tsp/L water).",
-                    "inorganic": "Use chlorothalonil fungicide."
-                },
-                'Tomato___Septoria_leaf_spot': {
-                    "prevention": "Remove infected debris and mulch base area.",
-                    "organic": "Copper-based spray weekly.",
-                    "inorganic": "Use mancozeb or chlorothalonil."
-                },
-                'Tomato___Spider_mites Two-spotted_spider_mite': {
-                    "prevention": "Increase humidity and introduce natural predators.",
-                    "organic": "Neem oil or insecticidal soap.",
-                    "inorganic": "Use abamectin or bifenthrin cautiously."
-                },
-                'Tomato___Target_Spot': {
-                    "prevention": "Remove lower leaves and improve ventilation.",
-                    "organic": "Neem oil and compost tea spray.",
-                    "inorganic": "Use azoxystrobin or mancozeb fungicide."
-                },
-                'Tomato___Tomato_Yellow_Leaf_Curl_Virus': {
-                    "prevention": "Control whiteflies and remove infected plants.",
-                    "organic": "Spray neem oil for whitefly control.",
-                    "inorganic": "Apply imidacloprid insecticide."
-                },
-                'Tomato___Tomato_mosaic_virus': {
-                    "prevention": "Use virus-free seeds and sterilize tools.",
-                    "organic": "Use seaweed extract for plant immunity.",
-                    "inorganic": "No direct cure; remove infected plants."
-                },
-                'Tomato___healthy': {
-                    "prevention": "Maintain proper watering and balanced fertilizer.",
-                    "organic": "Compost foliar spray as preventive.",
-                    "inorganic": "No treatment required."
-                }
-            }
-
-            # -----------------------------
-            # Show Treatment Info
-            # -----------------------------
-            if predicted_disease in disease_info:
-                info = disease_info[predicted_disease]
-                st.subheader("🛡️ Prevention Techniques:")
-                st.write(info["prevention"])
-                st.subheader("🌱 Organic Treatment:")
-                st.write(info["organic"])
-                st.subheader("💊 Inorganic Treatment:")
-                st.write(info["inorganic"])
-            else:
-                st.info("No detailed prevention/treatment information available for this plant.")
+    if st.button("🚀 Retrain Model Now"):
+        retrain_model(feedback_dir)
