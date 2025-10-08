@@ -10,7 +10,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 
-
 # ---------------------------------------------------
 # 🌿 TensorFlow Model Prediction Function
 # ---------------------------------------------------
@@ -239,7 +238,6 @@ disease_info = {
     }
 }
 
-
 # ---------------------------------------------------
 # 🏠 Sidebar Navigation
 # ---------------------------------------------------
@@ -247,15 +245,33 @@ st.sidebar.title("Dashboard")
 app_mode = st.sidebar.selectbox("Select Page", ["Home", "About", "Disease Recognition"])
 
 # ---------------------------------------------------
-# HOME PAGE
+# HOME PAGE (original markdown restored)
 # ---------------------------------------------------
 if app_mode == "Home":
     st.header("🌿 PLANT DISEASE RECOGNITION SYSTEM")
-    st.image("home_page.jpeg", use_column_width=True)
+    image_path = "home_page.jpeg"
+    st.image(image_path, use_column_width=True)
     st.markdown("""
-    Welcome to the **Plant Disease Recognition System!** 🌿🔍
+   Welcome to the Plant Disease Recognition System! 🌿🔍
+    
+    Our mission is to help in identifying plant diseases efficiently. Upload an image of a plant, and our system will analyze it to detect any signs of diseases. Together, let's protect our crops and ensure a healthier harvest!
 
-    Upload an image of a plant, and our AI will detect possible diseases in seconds.
+    ### How It Works
+    1. *Upload Image:* Go to the *Disease Recognition* page and upload an image of a plant with suspected diseases.
+    2. *Analysis:* Our system will process the image using advanced algorithms to identify potential diseases.
+    3. *Results:* View the results and recommendations for further action.
+
+    ### Why Choose Us?
+    - *Accuracy:* Our system utilizes state-of-the-art machine learning techniques for accurate disease detection.
+    - *User-Friendly:* Simple and intuitive interface for seamless user experience.
+    - *Fast and Efficient:* Receive results in seconds, allowing for quick decision-making.
+
+    ### Get Started
+    Click on the *Disease Recognition* page in the sidebar to upload an image and experience the power of our Plant Disease Recognition System!
+
+    ### About Us
+    Learn more about the project, our team, and our goals on the *About* page.
+
     """)
 
 # ---------------------------------------------------
@@ -264,11 +280,15 @@ if app_mode == "Home":
 elif app_mode == "About":
     st.header("About the Project")
     st.markdown("""
-    #### Dataset Information
-    - Contains **87,000+ images** of healthy and diseased leaves.
-    - 38 distinct classes.
-    - Split: 80% training, 20% validation.
-    - 33 test images for final evaluation.
+     #### About Dataset
+                This dataset is recreated using offline augmentation from the original dataset.The original dataset can be found on this github repo.
+                This dataset consists of about 87K rgb images of healthy and diseased crop leaves which is categorized into 38 different classes.The total dataset is divided into 80/20 ratio of training and validation set preserving the directory structure.
+                A new directory containing 33 test images is created later for prediction purpose.
+    #### Content
+                1. train (70295 images)
+                2. test (33 images)
+                3. validation (17572 images)
+
     """)
 
 # ---------------------------------------------------
@@ -278,53 +298,69 @@ elif app_mode == "Disease Recognition":
     st.header("🩺 Disease Recognition")
     test_image = st.file_uploader("Upload a leaf image:", type=["jpg", "jpeg", "png"])
 
-    if test_image:
+    if test_image is not None:
         if st.button("Show Image"):
             st.image(test_image, use_column_width=True)
+
         if st.button("Predict"):
-            st.write("🔍 Analyzing...")
+            st.write("🔍 **Analyzing...**")
             result_index = model_prediction(test_image)
+
             predicted_disease = CLASS_NAMES[result_index]
             st.success(f"🌾 Model Prediction: **{predicted_disease}**")
+
+            # Show Treatment Info
             if predicted_disease in disease_info:
                 info = disease_info[predicted_disease]
-                st.subheader("🛡️ Prevention:")
+                st.subheader("🛡️ Prevention Techniques:")
                 st.write(info["prevention"])
                 st.subheader("🌱 Organic Treatment:")
                 st.write(info["organic"])
                 st.subheader("💊 Inorganic Treatment:")
                 st.write(info["inorganic"])
             else:
-                st.info("No treatment info available.")
+                st.info("No detailed prevention/treatment information available for this plant.")
 
-    # CAMERA CAPTURE
+    # ----------------------------- ADDED FEATURES -----------------------------
     st.markdown("---")
     st.subheader("📷 Capture Image from Camera")
     captured_image = st.camera_input("Take a picture of the leaf:")
-    if captured_image:
+
+    # Predict on captured image
+    if captured_image is not None:
         st.image(captured_image, caption="Captured Image", use_column_width=True)
         if st.button("Predict Captured Image"):
+            st.write("🔍 **Analyzing captured image...**")
             result_index_cap = model_prediction(captured_image)
             predicted_cap = CLASS_NAMES[result_index_cap]
             st.success(f"🌾 Model Prediction (Captured): **{predicted_cap}**")
 
-    # FEEDBACK
+    # ----------------------------- Feedback System + CSV Logging -----------------------------
     st.markdown("---")
     st.subheader("🧠 Feedback — Help Improve Model")
     feedback_label = st.text_input("Enter Correct Disease Name (e.g., Tomato___Late_blight)")
+
     if st.button("Submit Feedback"):
-        source_image = captured_image if captured_image else test_image
+        source_image = None
+        if 'captured_image' in locals() and captured_image is not None:
+            source_image = captured_image
+        elif 'test_image' in locals() and test_image is not None:
+            source_image = test_image
+
         if not feedback_label:
-            st.warning("Please enter the correct label.")
-        elif not source_image:
+            st.warning("Please enter the correct label first.")
+        elif source_image is None:
             st.warning("No image selected or captured.")
         else:
             os.makedirs("feedback_data", exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{feedback_label}_{timestamp}.jpg"
             save_path = os.path.join("feedback_data", filename)
+
             img = Image.open(source_image)
             img.save(save_path)
+
+            # Log feedback in CSV
             log_path = "feedback_log.csv"
             new_row = pd.DataFrame([[timestamp, filename, feedback_label]], columns=["timestamp", "image_name", "correct_label"])
             if os.path.exists(log_path):
@@ -333,32 +369,60 @@ elif app_mode == "Disease Recognition":
             else:
                 log_df = new_row
             log_df.to_csv(log_path, index=False)
-            st.success(f"✅ Feedback saved: {filename}")
 
-    # RETRAIN MODEL
+            st.success(f"✅ Feedback saved and logged: {filename}")
+
+    # ----------------------------- Retrain Model on Feedback Data (with charts) -----------------------------
     st.markdown("---")
     st.subheader("🔁 Retrain Model with Feedback Data")
+    st.write("Fine-tune the model using newly corrected samples and visualize training progress.")
+
     if st.button("Retrain Model"):
-        st.info("⏳ Retraining started...")
+        st.info("⏳ Retraining started... please wait a moment.")
+
         model = load_model("trained_model.keras")
+
         if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
             datagen = ImageDataGenerator(rescale=1./255, validation_split=0.1)
-            train_data = datagen.flow_from_directory("feedback_data", target_size=(128, 128), batch_size=4, class_mode="categorical", subset="training")
-            val_data = datagen.flow_from_directory("feedback_data", target_size=(128, 128), batch_size=4, class_mode="categorical", subset="validation")
+            train_data = datagen.flow_from_directory(
+                "feedback_data",
+                target_size=(128, 128),
+                batch_size=4,
+                class_mode="categorical",
+                subset="training"
+            )
+            val_data = datagen.flow_from_directory(
+                "feedback_data",
+                target_size=(128, 128),
+                batch_size=4,
+                class_mode="categorical",
+                subset="validation"
+            )
+
             model.compile(optimizer=Adam(learning_rate=1e-4), loss="categorical_crossentropy", metrics=["accuracy"])
             history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
+
             model.save("trained_model_updated.keras")
             st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`!")
+
+            # 📊 Visualize Accuracy and Loss
             st.markdown("### 📈 Training Progress")
             fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+
             ax[0].plot(history.history["accuracy"], label="Train Accuracy")
-            ax[0].plot(history.history["val_accuracy"], label="Validation Accuracy")
+            ax[0].plot(history.history["val_accuracy"], label="Val Accuracy")
             ax[0].set_title("Accuracy Over Epochs")
+            ax[0].set_xlabel("Epochs")
+            ax[0].set_ylabel("Accuracy")
             ax[0].legend()
+
             ax[1].plot(history.history["loss"], label="Train Loss")
-            ax[1].plot(history.history["val_loss"], label="Validation Loss")
+            ax[1].plot(history.history["val_loss"], label="Val Loss")
             ax[1].set_title("Loss Over Epochs")
+            ax[1].set_xlabel("Epochs")
+            ax[1].set_ylabel("Loss")
             ax[1].legend()
+
             st.pyplot(fig)
         else:
-            st.warning("⚠️ No feedback images found. Please submit corrections first.")
+            st.warning("⚠️ No feedback images found. Please add corrections before retraining.")
