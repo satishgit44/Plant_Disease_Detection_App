@@ -383,14 +383,19 @@ elif app_mode == "Disease Recognition":
     # ----------------------------- Feedback System + CSV Logging -----------------------------
     st.markdown("---")
     st.subheader("🧠 Feedback — Help Improve Model")
-    feedback_label = st.text_input("Enter Correct Disease Name (e.g., Tomato___Late_blight)")
+    st.write("If the model prediction was incorrect, please select the correct disease name from the list below.")
+
+    feedback_label = st.selectbox(
+        "Select Correct Disease Name:",
+        options=["-- Select Disease --"] + CLASS_NAMES
+    )
 
     if st.button("Submit Feedback"):
         source_image = captured_image if captured_image else test_image
-        if not feedback_label:
-            st.warning("Please enter the correct label first.")
+        if feedback_label == "-- Select Disease --":
+            st.warning("⚠️ Please select a valid disease name before submitting.")
         elif source_image is None:
-            st.warning("No image selected or captured.")
+            st.warning("⚠️ No image selected or captured.")
         else:
             os.makedirs("feedback_data", exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -400,7 +405,6 @@ elif app_mode == "Disease Recognition":
             img = Image.open(source_image)
             img.save(save_path)
 
-            # Log feedback in CSV
             log_path = "feedback_log.csv"
             new_row = pd.DataFrame([[timestamp, filename, feedback_label]],
                                    columns=["timestamp", "image_name", "correct_label"])
@@ -411,7 +415,6 @@ elif app_mode == "Disease Recognition":
                 log_df = new_row
             log_df.to_csv(log_path, index=False)
             st.success(f"✅ Feedback saved and logged: {filename}")
-
     # ----------------------------- Developer-only Retrain Section -----------------------------
     st.markdown("---")
     st.subheader("🔐 Developer Access Only")
