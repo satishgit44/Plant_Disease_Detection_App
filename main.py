@@ -404,37 +404,52 @@ elif app_mode == "Disease Recognition":
 
 
 # ---------------------------------------------------
-# 🌱 FEEDBACK SYSTEM (inside Disease Recognition)
+# 📁 Ensure Feedback Folder Structure
 # ---------------------------------------------------
-    st.markdown("---")
-    st.subheader("🧠 Feedback — Help Improve Model")
-    st.write("If the model prediction was incorrect, please select the correct disease name from the list below.")
+def ensure_feedback_structure(class_names):
+    """Create feedback_data/ and subfolders for each class if not already existing."""
+    base_dir = "feedback_data"
+    os.makedirs(base_dir, exist_ok=True)
+    for cls in class_names:
+        os.makedirs(os.path.join(base_dir, cls), exist_ok=True)
 
-    # Ensure folder structure exists once per session
-    ensure_feedback_structure(CLASS_NAMES)
 
-    feedback_image = test_image if test_image else captured_image
-    if feedback_image is None:
-        st.info("📸 Please upload or capture an image before submitting feedback.")
+# ---------------------------------------------------
+# 📝 Feedback Submission Logic
+# ---------------------------------------------------
+st.subheader("📝 Feedback Section")
+
+# Ensure feedback_data and subfolders exist
+ensure_feedback_structure(CLASS_NAMES)
+
+# Dropdown for selecting correct class
+correct_class = st.selectbox("Select the correct class:", CLASS_NAMES, key="feedback_class")
+
+# Submit Feedback Button
+if st.button("Submit Feedback"):
+    if 'test_image' not in locals() or test_image is None:
+        st.warning("⚠️ Please upload an image before submitting feedback.")
+    elif not correct_class:
+        st.warning("⚠️ Please select a valid class before submitting.")
     else:
-        correct_class = st.selectbox("✅ Select the correct disease:", CLASS_NAMES)
+        # Create class-specific feedback folder
+        feedback_dir = os.path.join("feedback_data", correct_class)
+        os.makedirs(feedback_dir, exist_ok=True)
 
-        if st.button("Submit Feedback"):
-            feedback_dir = os.path.join("feedback_data", correct_class)
-            os.makedirs(feedback_dir, exist_ok=True)
+        # Safe filename with timestamp
+        base, ext = os.path.splitext(test_image.name)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = f"{base}_{timestamp}{ext}"
+        save_path = os.path.join(feedback_dir, safe_filename)
 
-            # Save image safely
-            base, ext = os.path.splitext(feedback_image.name)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_filename = f"{base}_{timestamp}{ext}"
-            save_path = os.path.join(feedback_dir, safe_filename)
+        # Save uploaded image to disk
+        with open(save_path, "wb") as f:
+            f.write(test_image.getbuffer())
 
-            with open(save_path, "wb") as f:
-                f.write(feedback_image.getbuffer())
-
-            st.success(f"✅ Feedback saved to `{feedback_dir}`")
-            st.info("This image will be used to improve the model during retraining.")
-
+        # Confirmation
+        st.success(f"✅ Feedback saved successfully to `{feedback_dir}`")
+        st.info("This image will be used to improve the model during retraining.")
+        st.write("📂 Saved at:", os.path.abspath(save_path))
     # ---------------------------------------------------
     # 🔐 DEVELOPER RETRAIN SECTION
     # ---------------------------------------------------
