@@ -403,52 +403,56 @@ elif app_mode == "Disease Recognition":
     )
 
 
-# ✅ Ensure folder structure exists before saving
-# ✅ Ensure folder structure exists before saving
-ensure_feedback_structure(CLASS_NAMES)
+# ---------------------------------------------------
+# 🌱 FEEDBACK SYSTEM (inside Disease Recognition)
+# ---------------------------------------------------
+    st.markdown("---")
+    st.subheader("🧠 Feedback — Help Improve Model")
+    st.write("If the model prediction was incorrect, please select the correct disease name from the list below.")
 
-if st.button("Submit Feedback"):
-    # Validate inputs first
-    if test_image is None:
-        st.warning("⚠️ Please upload an image before submitting feedback.")
+    # Ensure folder structure exists once per session
+    ensure_feedback_structure(CLASS_NAMES)
+
+    feedback_image = test_image if test_image else captured_image
+    if feedback_image is None:
+        st.info("📸 Please upload or capture an image before submitting feedback.")
     else:
-        correct_class = st.selectbox("Select the correct class:", CLASS_NAMES, key="feedback_class")
+        correct_class = st.selectbox("✅ Select the correct disease:", CLASS_NAMES)
 
-        if not correct_class:
-            st.warning("⚠️ Please select a valid class before submitting.")
-        else:
+        if st.button("Submit Feedback"):
             feedback_dir = os.path.join("feedback_data", correct_class)
             os.makedirs(feedback_dir, exist_ok=True)
 
-            base, ext = os.path.splitext(test_image.name)
+            # Save image safely
+            base, ext = os.path.splitext(feedback_image.name)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_filename = f"{base}_{timestamp}{ext}"
             save_path = os.path.join(feedback_dir, safe_filename)
 
             with open(save_path, "wb") as f:
-                f.write(test_image.getbuffer())
+                f.write(feedback_image.getbuffer())
 
-            st.success(f"✅ Feedback saved to: `{feedback_dir}`")
+            st.success(f"✅ Feedback saved to `{feedback_dir}`")
             st.info("This image will be used to improve the model during retraining.")
 
-    
-    # ----------------------------- Developer-only Retrain Section -----------------------------
+    # ---------------------------------------------------
+    # 🔐 DEVELOPER RETRAIN SECTION
+    # ---------------------------------------------------
     st.markdown("---")
     st.subheader("🔐 Developer Access Only")
     dev_key = st.text_input("Enter Developer Key to Access Retraining:", type="password")
 
-    if dev_key == "TEAMsatish@2025":  # change this to your private password
+    if dev_key == "TEAMsatish@2025":
         st.success("✅ Developer access granted.")
         st.subheader("🔁 Retrain Model with Feedback Data")
-        st.write("Fine-tune the model using newly corrected samples and visualize training progress.")
 
         if st.button("Retrain Model"):
-            st.info("⏳ Retraining started... please wait a moment.")
+            st.info("⏳ Retraining started... please wait.")
             model = load_model("trained_model.keras")
-        
+
             if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
                 datagen = ImageDataGenerator(rescale=1./255, validation_split=0.1)
-        
+
                 train_data = datagen.flow_from_directory(
                     "feedback_data",
                     target_size=(128, 128),
@@ -463,42 +467,33 @@ if st.button("Submit Feedback"):
                     class_mode="categorical",
                     subset="validation"
                 )
-        
-                # Debug check
-                st.write(f"Train batches: {len(train_data)}, Validation batches: {len(val_data)}")
-        
+
                 if len(train_data) == 0 or len(val_data) == 0:
-                    st.error("❌ No valid data found in feedback_data. Ensure folder structure: feedback_data/<class_name>/image.jpg")
+                    st.error("❌ No valid feedback data found in 'feedback_data/'.")
                 else:
                     model.compile(optimizer=Adam(learning_rate=1e-4),
                                   loss="categorical_crossentropy",
                                   metrics=["accuracy"])
                     history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
-        
+
                     model.save("trained_model_updated.keras")
-                    st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`!")
-        
-                    # 📊 Visualize Accuracy and Loss
+                    st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`.")
+
+                    # Plot metrics
                     st.markdown("### 📈 Training Progress")
                     fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-        
-                    ax[0].plot(history.history["accuracy"], label="Train Accuracy")
-                    ax[0].plot(history.history["val_accuracy"], label="Val Accuracy")
-                    ax[0].set_title("Accuracy Over Epochs")
-                    ax[0].set_xlabel("Epochs")
-                    ax[0].set_ylabel("Accuracy")
+                    ax[0].plot(history.history["accuracy"], label="Train Acc")
+                    ax[0].plot(history.history["val_accuracy"], label="Val Acc")
+                    ax[0].set_title("Accuracy")
                     ax[0].legend()
-        
+
                     ax[1].plot(history.history["loss"], label="Train Loss")
                     ax[1].plot(history.history["val_loss"], label="Val Loss")
-                    ax[1].set_title("Loss Over Epochs")
-                    ax[1].set_xlabel("Epochs")
-                    ax[1].set_ylabel("Loss")
+                    ax[1].set_title("Loss")
                     ax[1].legend()
-        
+
                     st.pyplot(fig)
             else:
-                st.warning("⚠️ No feedback images found. Please add corrections before retraining.")
-
+                st.warning("⚠️ No feedback images found. Add feedback before retraining.")
     elif dev_key:
         st.error("❌ Invalid Developer Key.")
