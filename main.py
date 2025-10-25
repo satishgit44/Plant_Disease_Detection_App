@@ -426,52 +426,62 @@ elif app_mode == "Disease Recognition":
         st.write("Fine-tune the model using newly corrected samples and visualize training progress.")
 
         if st.button("Retrain Model"):
-            st.info("⏳ Retraining started... please wait a moment.")
-            model = load_model("trained_model.keras")
+    st.info("⏳ Retraining started... please wait a moment.")
+    model = load_model("trained_model.keras")
 
-            if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
-                datagen = ImageDataGenerator(rescale=1./255, validation_split=0.1)
-                train_data = datagen.flow_from_directory(
-                    "feedback_data",
-                    target_size=(128, 128),
-                    batch_size=4,
-                    class_mode="categorical",
-                    subset="training"
-                )
-                val_data = datagen.flow_from_directory(
-                    "feedback_data",
-                    target_size=(128, 128),
-                    batch_size=4,
-                    class_mode="categorical",
-                    subset="validation"
-                )
+    if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
+        datagen = ImageDataGenerator(rescale=1./255, validation_split=0.1)
 
-                model.compile(optimizer=Adam(learning_rate=1e-4), loss="categorical_crossentropy", metrics=["accuracy"])
-                history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
+        train_data = datagen.flow_from_directory(
+            "feedback_data",
+            target_size=(128, 128),
+            batch_size=4,
+            class_mode="categorical",
+            subset="training"
+        )
+        val_data = datagen.flow_from_directory(
+            "feedback_data",
+            target_size=(128, 128),
+            batch_size=4,
+            class_mode="categorical",
+            subset="validation"
+        )
 
-                model.save("trained_model_updated.keras")
-                st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`!")
+        # Debug check
+        st.write(f"Train batches: {len(train_data)}, Validation batches: {len(val_data)}")
 
-                # 📊 Visualize Accuracy and Loss
-                st.markdown("### 📈 Training Progress")
-                fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+        if len(train_data) == 0 or len(val_data) == 0:
+            st.error("❌ No valid data found in feedback_data. Ensure folder structure: feedback_data/<class_name>/image.jpg")
+        else:
+            model.compile(optimizer=Adam(learning_rate=1e-4),
+                          loss="categorical_crossentropy",
+                          metrics=["accuracy"])
+            history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
 
-                ax[0].plot(history.history["accuracy"], label="Train Accuracy")
-                ax[0].plot(history.history["val_accuracy"], label="Val Accuracy")
-                ax[0].set_title("Accuracy Over Epochs")
-                ax[0].set_xlabel("Epochs")
-                ax[0].set_ylabel("Accuracy")
-                ax[0].legend()
+            model.save("trained_model_updated.keras")
+            st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`!")
 
-                ax[1].plot(history.history["loss"], label="Train Loss")
-                ax[1].plot(history.history["val_loss"], label="Val Loss")
-                ax[1].set_title("Loss Over Epochs")
-                ax[1].set_xlabel("Epochs")
-                ax[1].set_ylabel("Loss")
-                ax[1].legend()
+            # 📊 Visualize Accuracy and Loss
+            st.markdown("### 📈 Training Progress")
+            fig, ax = plt.subplots(1, 2, figsize=(10, 4))
 
-                st.pyplot(fig)
-            else:
-                st.warning("⚠️ No feedback images found. Please add corrections before retraining.")
+            ax[0].plot(history.history["accuracy"], label="Train Accuracy")
+            ax[0].plot(history.history["val_accuracy"], label="Val Accuracy")
+            ax[0].set_title("Accuracy Over Epochs")
+            ax[0].set_xlabel("Epochs")
+            ax[0].set_ylabel("Accuracy")
+            ax[0].legend()
+
+            ax[1].plot(history.history["loss"], label="Train Loss")
+            ax[1].plot(history.history["val_loss"], label="Val Loss")
+            ax[1].set_title("Loss Over Epochs")
+            ax[1].set_xlabel("Epochs")
+            ax[1].set_ylabel("Loss")
+            ax[1].legend()
+
+            st.pyplot(fig)
+    else:
+        st.warning("⚠️ No feedback images found. Please add corrections before retraining.")
+
     elif dev_key:
         st.error("❌ Invalid Developer Key.")
