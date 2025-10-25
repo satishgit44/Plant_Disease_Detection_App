@@ -410,7 +410,7 @@ elif app_mode == "Disease Recognition":
         """Create feedback_data/ and subfolders for each class if not already existing."""
         base_dir = "feedback_data"
         os.makedirs(base_dir, exist_ok=True)
-        for cls in class_names:
+        for cls in CLASS_NAMES:
             os.makedirs(os.path.join(base_dir, cls), exist_ok=True)
     
     
