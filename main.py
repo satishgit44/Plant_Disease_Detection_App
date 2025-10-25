@@ -453,62 +453,62 @@ elif app_mode == "Disease Recognition":
         # ---------------------------------------------------
         # 🔐 DEVELOPER RETRAIN SECTION
         # ---------------------------------------------------
-        st.markdown("---")
-        st.subheader("🔐 Developer Access Only")
-        dev_key = st.text_input("Enter Developer Key to Access Retraining:", type="password")
-    
-        if dev_key == "TEAMsatish@2025":
-            st.success("✅ Developer access granted.")
-            st.subheader("🔁 Retrain Model with Feedback Data")
-    
-            if st.button("Retrain Model"):
-                st.info("⏳ Retraining started... please wait.")
-                model = load_model("trained_model.keras")
-    
-                if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
-                    datagen = ImageDataGenerator(rescale=1./255, validation_split=0.1)
-    
-                    train_data = datagen.flow_from_directory(
-                        "feedback_data",
-                        target_size=(128, 128),
-                        batch_size=4,
-                        class_mode="categorical",
-                        subset="training"
-                    )
-                    val_data = datagen.flow_from_directory(
-                        "feedback_data",
-                        target_size=(128, 128),
-                        batch_size=4,
-                        class_mode="categorical",
-                        subset="validation"
-                    )
-    
-                    if len(train_data) == 0 or len(val_data) == 0:
-                        st.error("❌ No valid feedback data found in 'feedback_data/'.")
+            st.markdown("---")
+            st.subheader("🔐 Developer Access Only")
+            dev_key = st.text_input("Enter Developer Key to Access Retraining:", type="password")
+        
+            if dev_key == "TEAMsatish@2025":
+                st.success("✅ Developer access granted.")
+                st.subheader("🔁 Retrain Model with Feedback Data")
+        
+                if st.button("Retrain Model"):
+                    st.info("⏳ Retraining started... please wait.")
+                    model = load_model("trained_model.keras")
+        
+                    if os.path.exists("feedback_data") and len(os.listdir("feedback_data")) > 0:
+                        datagen = ImageDataGenerator(rescale=1./255, validation_split=0.1)
+        
+                        train_data = datagen.flow_from_directory(
+                            "feedback_data",
+                            target_size=(128, 128),
+                            batch_size=4,
+                            class_mode="categorical",
+                            subset="training"
+                        )
+                        val_data = datagen.flow_from_directory(
+                            "feedback_data",
+                            target_size=(128, 128),
+                            batch_size=4,
+                            class_mode="categorical",
+                            subset="validation"
+                        )
+        
+                        if len(train_data) == 0 or len(val_data) == 0:
+                            st.error("❌ No valid feedback data found in 'feedback_data/'.")
+                        else:
+                            model.compile(optimizer=Adam(learning_rate=1e-4),
+                                          loss="categorical_crossentropy",
+                                          metrics=["accuracy"])
+                            history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
+        
+                            model.save("trained_model_updated.keras")
+                            st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`.")
+        
+                            # Plot metrics
+                            st.markdown("### 📈 Training Progress")
+                            fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+                            ax[0].plot(history.history["accuracy"], label="Train Acc")
+                            ax[0].plot(history.history["val_accuracy"], label="Val Acc")
+                            ax[0].set_title("Accuracy")
+                            ax[0].legend()
+        
+                            ax[1].plot(history.history["loss"], label="Train Loss")
+                            ax[1].plot(history.history["val_loss"], label="Val Loss")
+                            ax[1].set_title("Loss")
+                            ax[1].legend()
+        
+                            st.pyplot(fig)
                     else:
-                        model.compile(optimizer=Adam(learning_rate=1e-4),
-                                      loss="categorical_crossentropy",
-                                      metrics=["accuracy"])
-                        history = model.fit(train_data, validation_data=val_data, epochs=3, verbose=1)
-    
-                        model.save("trained_model_updated.keras")
-                        st.success("✅ Model retrained successfully and saved as `trained_model_updated.keras`.")
-    
-                        # Plot metrics
-                        st.markdown("### 📈 Training Progress")
-                        fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-                        ax[0].plot(history.history["accuracy"], label="Train Acc")
-                        ax[0].plot(history.history["val_accuracy"], label="Val Acc")
-                        ax[0].set_title("Accuracy")
-                        ax[0].legend()
-    
-                        ax[1].plot(history.history["loss"], label="Train Loss")
-                        ax[1].plot(history.history["val_loss"], label="Val Loss")
-                        ax[1].set_title("Loss")
-                        ax[1].legend()
-    
-                        st.pyplot(fig)
-                else:
-                    st.warning("⚠️ No feedback images found. Add feedback before retraining.")
-        elif dev_key:
-            st.error("❌ Invalid Developer Key.")
+                        st.warning("⚠️ No feedback images found. Add feedback before retraining.")
+            elif dev_key:
+                st.error("❌ Invalid Developer Key.")
