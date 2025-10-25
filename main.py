@@ -2,6 +2,7 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 import os
+import shutil
 from datetime import datetime
 from PIL import Image
 import pandas as pd
@@ -9,6 +10,17 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
+
+# Ensure expected feedback folder structure exists
+def ensure_feedback_structure(class_names):
+    base_dir = "feedback_data"
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir)
+
+    for class_name in class_names:
+        class_path = os.path.join(base_dir, class_name)
+        if not os.path.exists(class_path):
+            os.makedirs(class_path)
 
 # ---------------------------------------------------
 # 🌿 TensorFlow Model Prediction Function
@@ -389,32 +401,36 @@ elif app_mode == "Disease Recognition":
         "Select Correct Disease Name:",
         options=["-- Select Disease --"] + CLASS_NAMES
     )
+# ✅ Ensure folder structure exists before saving
+ensure_feedback_structure(class_names)
+if st.button("Submit Feedback"):
+    # Validate inputs first
+    if uploaded_file is None:
+        st.warning("⚠️ Please upload an image before submitting feedback.")
+    else:
+        correct_class = st.selectbox("Select the correct class:", class_names, key="feedback_class")
 
-    if st.button("Submit Feedback"):
-        source_image = captured_image if captured_image else test_image
-        if feedback_label == "-- Select Disease --":
-            st.warning("⚠️ Please select a valid disease name before submitting.")
-        elif source_image is None:
-            st.warning("⚠️ No image selected or captured.")
+        if not correct_class:
+            st.warning("⚠️ Please select a valid class before submitting.")
         else:
-            os.makedirs("feedback_data", exist_ok=True)
+            # Create feedback directory for that class
+            feedback_dir = os.path.join("feedback_data", correct_class)
+            os.makedirs(feedback_dir, exist_ok=True)
+
+            # Generate a unique filename (to avoid overwriting)
+            base, ext = os.path.splitext(uploaded_file.name)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{feedback_label}_{timestamp}.jpg"
-            save_path = os.path.join("feedback_data", filename)
+            safe_filename = f"{base}_{timestamp}{ext}"
+            save_path = os.path.join(feedback_dir, safe_filename)
 
-            img = Image.open(source_image)
-            img.save(save_path)
+            # Save the uploaded image
+            with open(save_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
 
-            log_path = "feedback_log.csv"
-            new_row = pd.DataFrame([[timestamp, filename, feedback_label]],
-                                   columns=["timestamp", "image_name", "correct_label"])
-            if os.path.exists(log_path):
-                log_df = pd.read_csv(log_path)
-                log_df = pd.concat([log_df, new_row], ignore_index=True)
-            else:
-                log_df = new_row
-            log_df.to_csv(log_path, index=False)
-            st.success(f"✅ Feedback saved and logged: {filename}")
+            st.success(f"✅ Feedback saved to: `{feedback_dir}`")
+            st.info("This image will be used to improve the model during retraining.")
+
+    
     # ----------------------------- Developer-only Retrain Section -----------------------------
     st.markdown("---")
     st.subheader("🔐 Developer Access Only")
