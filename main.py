@@ -37,7 +37,7 @@ def model_prediction(test_image):
 # 🌾 Class Names (38 Classes)
 # ---------------------------------------------------
 CLASS_NAMES = [
-    'Apple__Apple_scab', 'Apple_Black_rot', 'Apple_Cedar_apple_rust', 'Apple__healthy',
+    'Apple_Apple_scab', 'Apple_Black_rot', 'Apple_Cedar_apple_rust', 'Apple__healthy',
     'Blueberry__healthy', 'Cherry(including_sour)Powdery_mildew', 'Cherry(including_sour)_healthy',
     'Corn_(maize)Cercospora_leaf_spot Gray_leaf_spot', 'Corn(maize)Common_rust',
     'Corn_(maize)Northern_Leaf_Blight', 'Corn(maize)healthy', 'Grape__Black_rot',
@@ -64,7 +64,7 @@ disease_info = {
                 "organic": "Use neem oil or sulfur sprays weekly.",
                 "inorganic": "Apply mancozeb or captan-based fungicide."
             },
-            'Apple___Black_rot': {
+            'Apple_Black_rot': {
                 "prevention": "Prune out dead wood, remove mummified fruit, and use resistant varieties.",
                 "organic": "Use copper-based sprays every 10 days.",
                 "inorganic": "Use thiophanate-methyl or mancozeb fungicides."
